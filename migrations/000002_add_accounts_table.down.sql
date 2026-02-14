@@ -1,0 +1,6 @@
+DROP TABLE IF EXISTS balances;
+DROP TABLE IF EXISTS ledger_entries;
+DROP TABLE IF EXISTS transactions;
+DROP TABLE IF EXISTS accounts;
+
+DROP EXTENSION IF EXISTS citext;
