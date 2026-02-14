@@ -11,8 +11,17 @@ import (
 	"github.com/akeren/go-api-foundry/config"
 	"github.com/akeren/go-api-foundry/domain"
 	"github.com/akeren/go-api-foundry/internal/log"
+
+	_ "github.com/akeren/go-api-foundry/docs"
 )
 
+// @title						API Foundry API
+// @version					0.1
+// @description				API Foundry API documentation
+// @securityDefinitions.apikey	BearerAuth
+// @in							header
+// @name						Authorization
+// @scheme						bearer.
 func main() {
 	logger := log.NewLoggerWithJSONOutput()
 

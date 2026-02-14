@@ -1,0 +1,104 @@
+definitions:
+  domain_account.AccountResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      type:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  domain_account.CreateAccountRequest:
+    properties:
+      type:
+        type: string
+    required:
+    - type
+    type: object
+info:
+  contact: {}
+  description: API Foundry API documentation
+  title: API Foundry API
+  version: "0.1"
+paths:
+  /v1/accounts:
+    post:
+      consumes:
+      - application/json
+      description: create an account
+      parameters:
+      - description: Account payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/domain_account.CreateAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain_account.AccountResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create an account
+      tags:
+      - accounts
+  /v1/accounts/{id}:
+    get:
+      consumes:
+      - application/json
+      description: get an account by ID
+      parameters:
+      - description: Account ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain_account.AccountResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get an account
+      tags:
+      - accounts
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

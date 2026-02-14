@@ -2,7 +2,7 @@
 
 -include .env
 
-DB_URL?=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB_NAME}?sslmode=${POSTGRES_SSLMODE}
+DB_URL?=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST-}:${POSTGRES_PORT}/${POSTGRES_DB_NAME}?sslmode=${POSTGRES_SSLMODE}
 DB_MIGRATIONS_DIR?=migrations
 
 
@@ -54,6 +54,14 @@ migrate-force: install-migrate ## Force the database schema to a specific versio
 sqlc:
 	sqlc generate
 
+install-swag:
+	@if ! command -v swag >/dev/null 2>&1; then \
+		echo "Installing swag..."; \
+		go install github.com/swaggo/swag/cmd/swag@latest; \
+	fi
+
+swag: install-swag
+	swag init -g cmd/server/main.go --parseInternal --parseDependency --parseDepth 2
 
 generate-domain:
 	go run ./cmd/cli generate-domain

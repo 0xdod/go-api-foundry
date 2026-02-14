@@ -7,36 +7,25 @@ import (
 	apperrors "github.com/akeren/go-api-foundry/pkg/errors"
 )
 
-// AccountService defines the business logic layer for account domain
-type AccountService interface {
-	// Create creates a new account entry based on the provided request
-	Create(ctx context.Context, req *CreateAccountRequest) (*AccountResponse, error)
-
-	// FindByID retrieves a account entry by its unique ID
-	FindByID(ctx context.Context, id uint) (*AccountResponse, error)
-}
-
-type accountService struct {
+type Service struct {
 	logger     *log.Logger
-	repository AccountRepository
+	repository Repository
 }
 
-func NewAccountService(logger *log.Logger, repository AccountRepository) AccountService {
-	return &AccountService{
+func NewService(logger *log.Logger, repository Repository) *Service {
+	return &Service{
 		logger:     logger,
 		repository: repository,
 	}
 }
 
-func (s *accountService) Create(ctx context.Context, req *CreateAccountRequest) (*AccountResponse, error) {
+func (s *Service) Create(ctx context.Context, req *CreateAccountRequest) (*AccountResponse, error) {
 	logger := log.GetLoggerInstanceFromContext(ctx, s.logger)
 
 	if req == nil {
 		logger.Error("Create received empty request")
 		return nil, apperrors.NewInvalidRequestError("request cannot be nil", nil)
 	}
-
-	// Add business validation logic here
 
 	model := ToAccountModel(req)
 	entry, err := s.repository.Create(ctx, model)
@@ -46,10 +35,11 @@ func (s *accountService) Create(ctx context.Context, req *CreateAccountRequest) 
 	}
 
 	response := ToAccountResponse(entry)
+
 	return &response, nil
 }
 
-func (s *accountService) FindByID(ctx context.Context, id uint) (*AccountResponse, error) {
+func (s *Service) FindByID(ctx context.Context, id uint) (*AccountResponse, error) {
 	logger := log.GetLoggerInstanceFromContext(ctx, s.logger)
 
 	if id == 0 {

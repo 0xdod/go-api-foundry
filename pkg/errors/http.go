@@ -9,7 +9,7 @@ func HTTPStatusCode(err error) int {
 		return StatusInternalServerError
 	}
 
-	errorType := GetErrorType(err)
+	errorType := Type(err)
 
 	switch errorType {
 	case ErrorTypeNotFound:
@@ -44,7 +44,7 @@ func GetHumanReadableMessage(err error) string {
 		return "An unexpected error occurred"
 	}
 
-	var appErr *AppError
+	var appErr *Error
 	if errors.As(err, &appErr) {
 		return appErr.Message
 	}

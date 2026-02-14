@@ -37,69 +37,69 @@ const (
 	ErrorTypeMethodNotAllowed    = "METHOD_NOT_ALLOWED"
 )
 
-type AppError struct {
+type Error struct {
 	Type    string
 	Message string
 	Err     error
 }
 
-func (e *AppError) Error() string {
+func (e *Error) Error() string {
 	if e.Err != nil {
 		return fmt.Sprintf("%s: %s: %v", e.Type, e.Message, e.Err)
 	}
 	return fmt.Sprintf("%s: %s", e.Type, e.Message)
 }
 
-func (e *AppError) Unwrap() error {
+func (e *Error) Unwrap() error {
 	return e.Err
 }
 
-func NewAppError(errType, message string, err error) *AppError {
-	return &AppError{
+func New(errType, message string, err error) *Error {
+	return &Error{
 		Type:    errType,
 		Message: message,
 		Err:     err,
 	}
 }
 
-func NewNotFoundError(message string, err error) *AppError {
-	return NewAppError(ErrorTypeNotFound, message, err)
+func NewNotFoundError(message string, err error) *Error {
+	return New(ErrorTypeNotFound, message, err)
 }
 
-func NewInvalidRequestError(message string, err error) *AppError {
-	return NewAppError(ErrorTypeInvalidRequest, message, err)
+func NewInvalidRequestError(message string, err error) *Error {
+	return New(ErrorTypeInvalidRequest, message, err)
 }
 
-func NewDatabaseError(message string, err error) *AppError {
-	return NewAppError(ErrorTypeDatabaseError, message, err)
+func NewDatabaseError(message string, err error) *Error {
+	return New(ErrorTypeDatabaseError, message, err)
 }
 
-func NewConflictError(message string, err error) *AppError {
-	return NewAppError(ErrorTypeConflict, message, err)
+func NewConflictError(message string, err error) *Error {
+	return New(ErrorTypeConflict, message, err)
 }
 
-func NewUnauthorizedError(message string, err error) *AppError {
-	return NewAppError(ErrorTypeUnauthorized, message, err)
+func NewUnauthorizedError(message string, err error) *Error {
+	return New(ErrorTypeUnauthorized, message, err)
 }
 
-func NewForbiddenError(message string, err error) *AppError {
-	return NewAppError(ErrorTypeForbidden, message, err)
+func NewForbiddenError(message string, err error) *Error {
+	return New(ErrorTypeForbidden, message, err)
 }
 
-func NewInternalServerError(message string, err error) *AppError {
-	return NewAppError(ErrorTypeInternalServerError, message, err)
+func NewInternalServerError(message string, err error) *Error {
+	return New(ErrorTypeInternalServerError, message, err)
 }
 
-func NewNoContentError(message string, err error) *AppError {
-	return NewAppError(ErrorTypeNoContent, message, err)
+func NewNoContentError(message string, err error) *Error {
+	return New(ErrorTypeNoContent, message, err)
 }
 
-func GetErrorType(err error) string {
+func Type(err error) string {
 	if err == nil {
 		return ""
 	}
 
-	var appErr *AppError
+	var appErr *Error
 	if errors.As(err, &appErr) {
 		return appErr.Type
 	}

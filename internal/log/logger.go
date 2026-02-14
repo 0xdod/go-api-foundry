@@ -10,10 +10,10 @@ import (
 
 type contextKey string
 
-
-
 var CorrelatedIDKey contextKey = "correlation_id"
+
 const LoggerKeyForContext contextKey = "logger"
+
 type Logger struct {
 	*slog.Logger
 }
@@ -48,10 +48,6 @@ func GenerateCorrelationID() string {
 	return uuid.New().String()
 }
 
-
-
-
-
 func GetLoggerInstanceFromContext(ctx context.Context, fallbackLogger *Logger) *Logger {
 	if ctx != nil {
 		if logger := ctx.Value(LoggerKeyForContext); logger != nil {
@@ -60,13 +56,11 @@ func GetLoggerInstanceFromContext(ctx context.Context, fallbackLogger *Logger) *
 			}
 		}
 
-
 		if fallbackLogger != nil {
 			return fallbackLogger.WithCorrelationID(ctx)
 		}
 		return NewLoggerWithJSONOutput().WithCorrelationID(ctx)
 	}
-
 
 	if fallbackLogger != nil {
 		return fallbackLogger

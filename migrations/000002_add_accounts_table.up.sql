@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS accounts (
     id BIGSERIAL PRIMARY KEY,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    type CITEXT NOT NULL
+    type CITEXT NOT NULL DEFAULT 'user'
 );
 
 CREATE TABLE IF NOT EXISTS transactions (
@@ -40,7 +40,6 @@ WITH account_types AS (
     SELECT unnest(array['treasury', 'external_funding', 'fee']) AS type
 )
 INSERT INTO accounts (type) 
-SELECT type FROM account_types
-ON CONFLICT (type) DO NOTHING;
+SELECT type FROM account_types;
 
 

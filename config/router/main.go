@@ -16,6 +16,8 @@ import (
 	"github.com/akeren/go-api-foundry/pkg/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
@@ -70,6 +72,7 @@ func CreateRouterService(logger *log.Logger, cache Cache, routerConfig *RouterCo
 
 	ginRouter := gin.New()
 	ginRouter.Use(gin.Recovery())
+	ginRouter.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	if utils.IsTracingEnabled() {
 		serviceName := utils.OTelServiceName()

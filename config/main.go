@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strconv"
 	"time"
@@ -9,12 +10,14 @@ import (
 	"github.com/akeren/go-api-foundry/config/router"
 	"github.com/akeren/go-api-foundry/internal/log"
 	"github.com/akeren/go-api-foundry/internal/models"
+	"github.com/akeren/go-api-foundry/internal/postgres"
 	"github.com/akeren/go-api-foundry/pkg/constants"
 	"gorm.io/gorm"
 )
 
 type ApplicationConfig struct {
 	DB              *gorm.DB
+	PGDB            *postgres.DB
 	RouterService   *router.RouterService
 	Logger          *log.Logger
 	Cache           Cache
@@ -120,14 +123,42 @@ func LoadApplicationConfiguration(logger *log.Logger, autoMigrate bool) (*Applic
 		RequestTimeout:    appConfig.RequestTimeout,
 	})
 
+	pgdb, err := NewPostgresDB(logger)
+	if err != nil {
+		return nil, err
+	}
+
 	logger.Info("Application configuration loaded successfully")
 
 	return &ApplicationConfig{
 		DB:              db,
+		PGDB:            pgdb,
 		RouterService:   routerService,
 		Logger:          logger,
 		Cache:           cache,
 		Config:          appConfig,
 		TracingShutdown: tracingShutdown,
 	}, nil
+}
+
+func NewPostgresDB(logger *log.Logger) (*postgres.DB, error) {
+	dsn := sanitizeEnv(GetValueFromEnvironmentVariable("APP_DATABASE_URL", ""))
+
+	if dsn == "" {
+		host := sanitizeEnv(GetValueFromEnvironmentVariable("POSTGRES_HOST", ""))
+		port := sanitizeEnv(GetValueFromEnvironmentVariable("POSTGRES_PORT", ""))
+		user := sanitizeEnv(GetValueFromEnvironmentVariable("POSTGRES_USER", ""))
+		password := sanitizeEnv(GetValueFromEnvironmentVariable("POSTGRES_PASSWORD", ""))
+		dbName := sanitizeEnv(GetValueFromEnvironmentVariable("POSTGRES_DB_NAME", ""))
+		sslmode := sanitizeEnv(GetValueFromEnvironmentVariable("POSTGRES_SSLMODE", ""))
+		dsn = fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s", user, password, host, port, dbName, sslmode)
+	}
+
+	pgdb := postgres.NewDB(dsn, logger)
+
+	if err := pgdb.Connect(context.Background()); err != nil {
+		return nil, fmt.Errorf("failed to connect to database: %w", err)
+	}
+
+	return pgdb, nil
 }

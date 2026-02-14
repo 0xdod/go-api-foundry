@@ -1,22 +1,22 @@
 package account
 
 import (
+	"time"
+
 	"github.com/akeren/go-api-foundry/internal/models"
-	"github.com/akeren/go-api-foundry/pkg/constants"
 )
 
 // CreateAccountRequest defines the structure for creating a new account entry
 type CreateAccountRequest struct {
-	// Add your request fields here with validation tags
-	// Example: Name string `json:"name" binding:"required"`
+	Type string `json:"type" binding:"required"`
 }
 
 // AccountResponse defines the structure for account responses
 type AccountResponse struct {
-	ID        uint   `json:"id"`
-	CreatedAt string `json:"created_at"`
-	// Add your response fields here
-	// Example: Name string `json:"name"`
+	ID        uint      `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Type      string    `json:"type"`
 }
 
 // ========================================
@@ -29,8 +29,7 @@ func ToAccountModel(req *CreateAccountRequest) *models.Account {
 		return nil
 	}
 	return &models.Account{
-		// Map request fields to model fields
-		// Example: Name: req.Name,
+		Type: req.Type,
 	}
 }
 
@@ -40,9 +39,9 @@ func ToAccountResponse(model *models.Account) AccountResponse {
 		return AccountResponse{}
 	}
 	return AccountResponse{
-		ID:        model.ID,
-		CreatedAt: model.CreatedAt.Format(constants.RFC3339DateTimeFormat),
-		// Map model fields to response fields
-		// Example: Name: model.Name,
+		ID:        uint(model.ID),
+		CreatedAt: model.CreatedAt,
+		UpdatedAt: model.UpdatedAt,
+		Type:      model.Type,
 	}
 }
