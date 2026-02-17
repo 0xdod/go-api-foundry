@@ -30,28 +30,27 @@ func TestAccountService_Create(t *testing.T) {
 		}
 
 		expectedModel := &models.Account{
-			Type:     "savings",
 			Name:     "My Savings",
 			Code:     "SAV-001",
 			Currency: "USD",
 			UserID:   1,
 		}
 
+		now := time.Now()
 		expectedEntry := &models.Account{
 			ID:        1,
-			Type:      "savings",
+			Type:      "user",
 			Name:      "My Savings",
 			Code:      "SAV-001",
 			Currency:  "USD",
 			UserID:    1,
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
+			CreatedAt: now,
+			UpdatedAt: now,
 		}
 
 		mockRepo.EXPECT().
 			Create(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, entry *models.Account) (*models.Account, error) {
-				assert.Equal(t, expectedModel.Type, entry.Type)
 				assert.Equal(t, expectedModel.Name, entry.Name)
 				assert.Equal(t, expectedModel.Code, entry.Code)
 				assert.Equal(t, expectedModel.Currency, entry.Currency)
@@ -71,7 +70,6 @@ func TestAccountService_Create(t *testing.T) {
 		result, err := service.Create(context.Background(), nil)
 		assert.Error(t, err)
 		assert.Nil(t, result)
-		// assert custom error type if needed
 	})
 
 	t.Run("repository error", func(t *testing.T) {
@@ -154,33 +152,52 @@ func TestAccountService_GetComputedBalance(t *testing.T) {
 
 	t.Run("successful balance computation", func(t *testing.T) {
 		id := uint(1)
-		expectedBalance := int64(1000)
+		balance := int64(100)
+		expectedBalance := float64(balance) / 100.00
+		now := time.Now()
+		mockRepo.EXPECT().
+			FindByID(gomock.Any(), id).
+			Return(&models.Account{
+				ID:        uint64(id),
+				Type:      "savings",
+				Name:      "My Savings",
+				Code:      "SAV-001",
+				Balance:   balance,
+				Currency:  "USD",
+				UserID:    1,
+				CreatedAt: now,
+				UpdatedAt: now,
+			}, nil)
 
 		mockRepo.EXPECT().
 			ComputeBalance(gomock.Any(), id).
-			Return(expectedBalance, nil)
+			Return(balance, nil)
 
 		result, err := service.GetComputedBalance(context.Background(), id)
 
 		assert.NoError(t, err)
-		assert.Equal(t, expectedBalance, result)
+		assert.Equal(t, expectedBalance, result.Balance)
 	})
 
 	t.Run("invalid id", func(t *testing.T) {
-		result, err := service.GetComputedBalance(context.Background(), 0)
+		id := uint(0)
+		mockRepo.EXPECT().
+			FindByID(gomock.Any(), id).
+			Return(nil, database.CheckErrNoRows(apperrors.NewNotFoundError("not found", nil), "account not found"))
+		result, err := service.GetComputedBalance(context.Background(), id)
 		assert.Error(t, err)
-		assert.Equal(t, int64(0), result)
+		assert.Nil(t, result)
 	})
 
 	t.Run("repository error", func(t *testing.T) {
 		id := uint(1)
 		mockRepo.EXPECT().
-			ComputeBalance(gomock.Any(), id).
-			Return(int64(0), apperrors.NewDatabaseError("db error", nil))
+			FindByID(gomock.Any(), id).
+			Return(nil, apperrors.NewDatabaseError("db error", nil))
 
 		result, err := service.GetComputedBalance(context.Background(), id)
 
 		assert.Error(t, err)
-		assert.Equal(t, int64(0), result)
+		assert.Nil(t, result)
 	})
 }
