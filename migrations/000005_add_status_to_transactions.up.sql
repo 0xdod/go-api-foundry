@@ -1,0 +1,1 @@
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS status CITEXT NOT NULL DEFAULT 'completed';

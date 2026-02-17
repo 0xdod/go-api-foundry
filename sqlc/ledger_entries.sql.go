@@ -7,6 +7,8 @@ package sqlc
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createLedgerEntry = `-- name: CreateLedgerEntry :one
@@ -69,18 +71,36 @@ func (q *Queries) DeleteLedgerEntry(ctx context.Context, id int64) (LedgerEntry,
 }
 
 const findLedgerEntriesByAccountID = `-- name: FindLedgerEntriesByAccountID :many
-SELECT id, created_at, updated_at, transaction_id, account_id, amount, direction, balance_after, locked_balance_after FROM ledger_entries WHERE account_id = $1
+SELECT le.id, le.created_at, le.updated_at, le.transaction_id, le.account_id, le.amount, le.direction, le.balance_after, le.locked_balance_after, t.reference, t.type, t.status FROM ledger_entries le
+JOIN transactions t ON le.transaction_id = t.id
+WHERE account_id = $1
+ORDER BY t.created_at DESC
 `
 
-func (q *Queries) FindLedgerEntriesByAccountID(ctx context.Context, accountID int64) ([]LedgerEntry, error) {
+type FindLedgerEntriesByAccountIDRow struct {
+	ID                 int64              `db:"id"`
+	CreatedAt          pgtype.Timestamptz `db:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `db:"updated_at"`
+	TransactionID      int64              `db:"transaction_id"`
+	AccountID          int64              `db:"account_id"`
+	Amount             int64              `db:"amount"`
+	Direction          string             `db:"direction"`
+	BalanceAfter       int64              `db:"balance_after"`
+	LockedBalanceAfter int64              `db:"locked_balance_after"`
+	Reference          pgtype.Text        `db:"reference"`
+	Type               string             `db:"type"`
+	Status             string             `db:"status"`
+}
+
+func (q *Queries) FindLedgerEntriesByAccountID(ctx context.Context, accountID int64) ([]FindLedgerEntriesByAccountIDRow, error) {
 	rows, err := q.db.Query(ctx, findLedgerEntriesByAccountID, accountID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []LedgerEntry
+	var items []FindLedgerEntriesByAccountIDRow
 	for rows.Next() {
-		var i LedgerEntry
+		var i FindLedgerEntriesByAccountIDRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.CreatedAt,
@@ -91,6 +111,9 @@ func (q *Queries) FindLedgerEntriesByAccountID(ctx context.Context, accountID in
 			&i.Direction,
 			&i.BalanceAfter,
 			&i.LockedBalanceAfter,
+			&i.Reference,
+			&i.Type,
+			&i.Status,
 		); err != nil {
 			return nil, err
 		}
@@ -158,7 +181,7 @@ func (q *Queries) FindLedgerEntryByID(ctx context.Context, id int64) (LedgerEntr
 }
 
 const listLedgerEntries = `-- name: ListLedgerEntries :many
-SELECT id, created_at, updated_at, transaction_id, account_id, amount, direction, balance_after, locked_balance_after FROM ledger_entries
+SELECT id, created_at, updated_at, transaction_id, account_id, amount, direction, balance_after, locked_balance_after FROM ledger_entries ORDER BY created_at DESC
 `
 
 func (q *Queries) ListLedgerEntries(ctx context.Context) ([]LedgerEntry, error) {

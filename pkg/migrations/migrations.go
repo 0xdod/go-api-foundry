@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"net/url"
 	"path/filepath"
-	"sync"
 	"strings"
+	"sync"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database"
@@ -61,7 +61,7 @@ func Up(ctx context.Context, db *sql.DB, cfg Config) error {
 	if err != nil {
 		return fmt.Errorf("migrations: resolve dir: %w", err)
 	}
-	
+
 	// Build a proper file:// URL with correct escaping and path separators.
 	// Use ToSlash to normalize Windows backslashes to forward slashes.
 	sourceURL := (&url.URL{

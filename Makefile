@@ -13,10 +13,13 @@ run-with-migrate:
 	go run ./cmd/server --auto-migrate
 
 dev:
+	$(MAKE) sqlc
+	$(MAKE) swag
 	air
 
 dev-migrate:
-	air -- --auto-migrate
+	$(MAKE) migrate-up
+	$(MAKE) dev
 
 migrate:
 	go run ./cmd/cli migrate
@@ -51,6 +54,7 @@ migrate-force: install-migrate ## Force the database schema to a specific versio
 	fi; \
 	migrate -database $(DB_URL) -path $(DB_MIGRATIONS_DIR) force $(version)
 
+.PHONY: sqlc
 sqlc:
 	sqlc generate
 
@@ -60,8 +64,22 @@ install-swag:
 		go install github.com/swaggo/swag/cmd/swag@latest; \
 	fi
 
+.PHONY: swag
 swag: install-swag
 	swag init -g cmd/server/main.go --parseInternal --parseDependency --parseDepth 2
+
+
+.PHONY: mockgen-install
+mockgen-install:
+	@if ! command -v mockgen >/dev/null 2>&1; then \
+		echo "Installing mockgen..."; \
+		go install go.uber.org/mock/mockgen@latest; \
+	fi
+
+.PHONY: mocks
+mock: mockgen-install
+	mockgen -source=domain/account/repository.go -destination=domain/account/mock_repository.go -package=account
+	@echo "Mocks generated successfully!"
 
 generate-domain:
 	go run ./cmd/cli generate-domain

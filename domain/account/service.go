@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/akeren/go-api-foundry/internal/log"
+	"github.com/akeren/go-api-foundry/internal/postgres"
 	apperrors "github.com/akeren/go-api-foundry/pkg/errors"
 )
 
@@ -30,6 +31,9 @@ func (s *Service) Create(ctx context.Context, req *CreateAccountRequest) (*Accou
 	model := ToAccountModel(req)
 	entry, err := s.repository.Create(ctx, model)
 	if err != nil {
+		if postgres.IsErrUniqueViolation(err) {
+			return nil, apperrors.NewConflictError("account already exists", nil)
+		}
 		logger.Error("Failed to create account entry", "error", err)
 		return nil, err
 	}
@@ -55,4 +59,24 @@ func (s *Service) FindByID(ctx context.Context, id uint) (*AccountResponse, erro
 
 	response := ToAccountResponse(entry)
 	return &response, nil
+}
+
+func (s *Service) GetComputedBalance(ctx context.Context, id uint) (*BalanceResponse, error) {
+	logger := log.GetLoggerInstanceFromContext(ctx, s.logger)
+
+	_, err := s.repository.FindByID(ctx, id)
+	if err != nil {
+		logger.Error("Failed to find account entry", "id", id, "error", err)
+		return nil, err
+	}
+
+	balance, err := s.repository.ComputeBalance(ctx, id)
+	if err != nil {
+		logger.Error("Failed to compute account balance", "id", id, "error", err)
+		return nil, err
+	}
+
+	balanceInUnit := float64(balance) / 100.00
+
+	return &BalanceResponse{Balance: balanceInUnit}, nil
 }

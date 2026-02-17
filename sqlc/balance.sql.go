@@ -7,46 +7,7 @@ package sqlc
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
-
-const addToBalance = `-- name: AddToBalance :one
-INSERT INTO balances (account_id, balance, locked_balance)
-VALUES ($1, $2, $3)
-ON CONFLICT (account_id) DO UPDATE
-SET balance = COALESCE(balances.balance, 0) + COALESCE($4::bigint, 0),
-    locked_balance = COALESCE(balances.locked_balance, 0) + COALESCE($5::bigint, 0)
-RETURNING id, created_at, updated_at, account_id, balance, locked_balance
-`
-
-type AddToBalanceParams struct {
-	AccountID       int64       `db:"account_id"`
-	Balance         int64       `db:"balance"`
-	LockedBalance   int64       `db:"locked_balance"`
-	Balance_2       pgtype.Int8 `db:"balance_2"`
-	LockedBalance_2 pgtype.Int8 `db:"locked_balance_2"`
-}
-
-func (q *Queries) AddToBalance(ctx context.Context, arg AddToBalanceParams) (Balance, error) {
-	row := q.db.QueryRow(ctx, addToBalance,
-		arg.AccountID,
-		arg.Balance,
-		arg.LockedBalance,
-		arg.Balance_2,
-		arg.LockedBalance_2,
-	)
-	var i Balance
-	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.AccountID,
-		&i.Balance,
-		&i.LockedBalance,
-	)
-	return i, err
-}
 
 const deleteBalance = `-- name: DeleteBalance :one
 DELETE FROM balances WHERE account_id = $1 RETURNING id, created_at, updated_at, account_id, balance, locked_balance
@@ -119,27 +80,19 @@ const saveBalance = `-- name: SaveBalance :one
 INSERT INTO balances (account_id, balance, locked_balance)
 VALUES ($1, $2, $3)
 ON CONFLICT (account_id) DO UPDATE
-SET balance = COALESCE($4::bigint, balances.balance),
-    locked_balance = COALESCE($5::bigint, locked_balance)
+SET balance = COALESCE(EXCLUDED.balance, balances.balance),
+    locked_balance = COALESCE(EXCLUDED.locked_balance, balances.locked_balance)
 RETURNING id, created_at, updated_at, account_id, balance, locked_balance
 `
 
 type SaveBalanceParams struct {
-	AccountID       int64       `db:"account_id"`
-	Balance         int64       `db:"balance"`
-	LockedBalance   int64       `db:"locked_balance"`
-	Balance_2       pgtype.Int8 `db:"balance_2"`
-	LockedBalance_2 pgtype.Int8 `db:"locked_balance_2"`
+	AccountID     int64 `db:"account_id"`
+	Balance       int64 `db:"balance"`
+	LockedBalance int64 `db:"locked_balance"`
 }
 
 func (q *Queries) SaveBalance(ctx context.Context, arg SaveBalanceParams) (Balance, error) {
-	row := q.db.QueryRow(ctx, saveBalance,
-		arg.AccountID,
-		arg.Balance,
-		arg.LockedBalance,
-		arg.Balance_2,
-		arg.LockedBalance_2,
-	)
+	row := q.db.QueryRow(ctx, saveBalance, arg.AccountID, arg.Balance, arg.LockedBalance)
 	var i Balance
 	err := row.Scan(
 		&i.ID,

@@ -7,26 +7,83 @@ package sqlc
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const createAccount = `-- name: CreateAccount :one
-INSERT INTO accounts (type) VALUES ($1) RETURNING id, created_at, updated_at, type
+const computeBalance = `-- name: ComputeBalance :one
+WITH computed_balance AS (
+SELECT
+    COALESCE(SUM(
+        CASE 
+            WHEN a.normal_balance = 'debit' AND e.direction = 'debit'  THEN e.amount
+            WHEN a.normal_balance = 'debit' AND e.direction = 'credit' THEN -e.amount
+            WHEN a.normal_balance = 'credit' AND e.direction = 'credit' THEN e.amount
+            WHEN a.normal_balance = 'credit' AND e.direction = 'debit'  THEN -e.amount
+        END
+    ), 0) AS balance
+FROM accounts a
+LEFT JOIN ledger_entries e ON e.account_id = a.id
+WHERE a.id = $1
+GROUP BY a.id
+) 
+INSERT INTO balances (account_id, balance) 
+SELECT $1, cb.balance
+FROM computed_balance cb
+ON CONFLICT (account_id) 
+    DO UPDATE SET balance = EXCLUDED.balance
+RETURNING id, created_at, updated_at, account_id, balance, locked_balance
 `
 
-func (q *Queries) CreateAccount(ctx context.Context, type_ string) (Account, error) {
-	row := q.db.QueryRow(ctx, createAccount, type_)
+func (q *Queries) ComputeBalance(ctx context.Context, accountID int64) (Balance, error) {
+	row := q.db.QueryRow(ctx, computeBalance, accountID)
+	var i Balance
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.AccountID,
+		&i.Balance,
+		&i.LockedBalance,
+	)
+	return i, err
+}
+
+const createAccount = `-- name: CreateAccount :one
+INSERT INTO accounts (name, code, currency, user_id) VALUES ($1, $2, $3, $4) RETURNING id, created_at, updated_at, type, name, code, currency, normal_balance, user_id
+`
+
+type CreateAccountParams struct {
+	Name     pgtype.Text `db:"name"`
+	Code     pgtype.Text `db:"code"`
+	Currency string      `db:"currency"`
+	UserID   pgtype.Int8 `db:"user_id"`
+}
+
+func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (Account, error) {
+	row := q.db.QueryRow(ctx, createAccount,
+		arg.Name,
+		arg.Code,
+		arg.Currency,
+		arg.UserID,
+	)
 	var i Account
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Type,
+		&i.Name,
+		&i.Code,
+		&i.Currency,
+		&i.NormalBalance,
+		&i.UserID,
 	)
 	return i, err
 }
 
 const deleteAccount = `-- name: DeleteAccount :one
-DELETE FROM accounts WHERE id = $1 RETURNING id, created_at, updated_at, type
+DELETE FROM accounts WHERE id = $1 RETURNING id, created_at, updated_at, type, name, code, currency, normal_balance, user_id
 `
 
 func (q *Queries) DeleteAccount(ctx context.Context, id int64) (Account, error) {
@@ -37,60 +94,133 @@ func (q *Queries) DeleteAccount(ctx context.Context, id int64) (Account, error) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Type,
+		&i.Name,
+		&i.Code,
+		&i.Currency,
+		&i.NormalBalance,
+		&i.UserID,
 	)
 	return i, err
 }
 
 const findAccountByID = `-- name: FindAccountByID :one
-SELECT id, created_at, updated_at, type FROM accounts WHERE id = $1
+SELECT a.id, a.created_at, a.updated_at, a.type, a.name, a.code, a.currency, a.normal_balance, a.user_id, COALESCE(b.balance, 0) as balance, COALESCE(b.locked_balance, 0) as locked_balance 
+FROM accounts a LEFT JOIN balances b ON b.account_id = a.id 
+WHERE a.id = $1
 `
 
-func (q *Queries) FindAccountByID(ctx context.Context, id int64) (Account, error) {
+type FindAccountByIDRow struct {
+	ID            int64              `db:"id"`
+	CreatedAt     pgtype.Timestamptz `db:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `db:"updated_at"`
+	Type          string             `db:"type"`
+	Name          pgtype.Text        `db:"name"`
+	Code          pgtype.Text        `db:"code"`
+	Currency      string             `db:"currency"`
+	NormalBalance string             `db:"normal_balance"`
+	UserID        pgtype.Int8        `db:"user_id"`
+	Balance       int64              `db:"balance"`
+	LockedBalance int64              `db:"locked_balance"`
+}
+
+func (q *Queries) FindAccountByID(ctx context.Context, id int64) (FindAccountByIDRow, error) {
 	row := q.db.QueryRow(ctx, findAccountByID, id)
-	var i Account
+	var i FindAccountByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Type,
+		&i.Name,
+		&i.Code,
+		&i.Currency,
+		&i.NormalBalance,
+		&i.UserID,
+		&i.Balance,
+		&i.LockedBalance,
 	)
 	return i, err
 }
 
 const findAccountByType = `-- name: FindAccountByType :one
-SELECT id, created_at, updated_at, type FROM accounts WHERE type = $1
+SELECT a.id, a.created_at, a.updated_at, a.type, a.name, a.code, a.currency, a.normal_balance, a.user_id, COALESCE(b.balance, 0) as balance, COALESCE(b.locked_balance, 0) as locked_balance 
+FROM accounts a LEFT JOIN balances b ON b.account_id = a.id 
+WHERE a.type = $1
 `
 
-func (q *Queries) FindAccountByType(ctx context.Context, type_ string) (Account, error) {
+type FindAccountByTypeRow struct {
+	ID            int64              `db:"id"`
+	CreatedAt     pgtype.Timestamptz `db:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `db:"updated_at"`
+	Type          string             `db:"type"`
+	Name          pgtype.Text        `db:"name"`
+	Code          pgtype.Text        `db:"code"`
+	Currency      string             `db:"currency"`
+	NormalBalance string             `db:"normal_balance"`
+	UserID        pgtype.Int8        `db:"user_id"`
+	Balance       int64              `db:"balance"`
+	LockedBalance int64              `db:"locked_balance"`
+}
+
+func (q *Queries) FindAccountByType(ctx context.Context, type_ string) (FindAccountByTypeRow, error) {
 	row := q.db.QueryRow(ctx, findAccountByType, type_)
-	var i Account
+	var i FindAccountByTypeRow
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Type,
+		&i.Name,
+		&i.Code,
+		&i.Currency,
+		&i.NormalBalance,
+		&i.UserID,
+		&i.Balance,
+		&i.LockedBalance,
 	)
 	return i, err
 }
 
 const listAccounts = `-- name: ListAccounts :many
-SELECT id, created_at, updated_at, type FROM accounts
+SELECT a.id, a.created_at, a.updated_at, a.type, a.name, a.code, a.currency, a.normal_balance, a.user_id, COALESCE(b.balance, 0) as balance, COALESCE(b.locked_balance, 0) as locked_balance 
+FROM accounts a LEFT JOIN balances b ON b.account_id = a.id
 `
 
-func (q *Queries) ListAccounts(ctx context.Context) ([]Account, error) {
+type ListAccountsRow struct {
+	ID            int64              `db:"id"`
+	CreatedAt     pgtype.Timestamptz `db:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `db:"updated_at"`
+	Type          string             `db:"type"`
+	Name          pgtype.Text        `db:"name"`
+	Code          pgtype.Text        `db:"code"`
+	Currency      string             `db:"currency"`
+	NormalBalance string             `db:"normal_balance"`
+	UserID        pgtype.Int8        `db:"user_id"`
+	Balance       int64              `db:"balance"`
+	LockedBalance int64              `db:"locked_balance"`
+}
+
+func (q *Queries) ListAccounts(ctx context.Context) ([]ListAccountsRow, error) {
 	rows, err := q.db.Query(ctx, listAccounts)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Account
+	var items []ListAccountsRow
 	for rows.Next() {
-		var i Account
+		var i ListAccountsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Type,
+			&i.Name,
+			&i.Code,
+			&i.Currency,
+			&i.NormalBalance,
+			&i.UserID,
+			&i.Balance,
+			&i.LockedBalance,
 		); err != nil {
 			return nil, err
 		}
@@ -103,22 +233,36 @@ func (q *Queries) ListAccounts(ctx context.Context) ([]Account, error) {
 }
 
 const updateAccount = `-- name: UpdateAccount :one
-UPDATE accounts SET type = $2 WHERE id = $1 RETURNING id, created_at, updated_at, type
+UPDATE accounts SET name = $2, code = $3, currency = $4, user_id = $5 WHERE id = $1 RETURNING id, created_at, updated_at, type, name, code, currency, normal_balance, user_id
 `
 
 type UpdateAccountParams struct {
-	ID   int64  `db:"id"`
-	Type string `db:"type"`
+	ID       int64       `db:"id"`
+	Name     pgtype.Text `db:"name"`
+	Code     pgtype.Text `db:"code"`
+	Currency string      `db:"currency"`
+	UserID   pgtype.Int8 `db:"user_id"`
 }
 
 func (q *Queries) UpdateAccount(ctx context.Context, arg UpdateAccountParams) (Account, error) {
-	row := q.db.QueryRow(ctx, updateAccount, arg.ID, arg.Type)
+	row := q.db.QueryRow(ctx, updateAccount,
+		arg.ID,
+		arg.Name,
+		arg.Code,
+		arg.Currency,
+		arg.UserID,
+	)
 	var i Account
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Type,
+		&i.Name,
+		&i.Code,
+		&i.Currency,
+		&i.NormalBalance,
+		&i.UserID,
 	)
 	return i, err
 }

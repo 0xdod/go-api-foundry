@@ -18,8 +18,8 @@ CREATE TABLE IF NOT EXISTS ledger_entries (
     id BIGSERIAL PRIMARY KEY,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    transaction_id BIGSERIAL NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
-    account_id BIGSERIAL NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    transaction_id BIGINT NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+    account_id BIGINT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     amount BIGINT NOT NULL,
     direction TEXT NOT NULL CHECK (direction IN ('debit','credit')),
     balance_after BIGINT NOT NULL,
@@ -30,9 +30,10 @@ CREATE TABLE IF NOT EXISTS balances (
     id BIGSERIAL PRIMARY KEY,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    account_id BIGSERIAL NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    balance BIGINT NOT NULL DEFAULT 0,
-    locked_balance BIGINT NOT NULL DEFAULT 0
+    account_id BIGINT NOT NULL UNIQUE REFERENCES accounts(id) ON DELETE CASCADE,
+    balance BIGINT NOT NULL DEFAULT 0 CHECK (balance >= 0),
+    locked_balance BIGINT NOT NULL DEFAULT 0 CHECK (locked_balance >= 0),
+    CHECK(balance >= locked_balance)
 );
 
 -- seed system accounts

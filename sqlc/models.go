@@ -9,10 +9,15 @@ import (
 )
 
 type Account struct {
-	ID        int64              `db:"id"`
-	CreatedAt pgtype.Timestamptz `db:"created_at"`
-	UpdatedAt pgtype.Timestamptz `db:"updated_at"`
-	Type      string             `db:"type"`
+	ID            int64              `db:"id"`
+	CreatedAt     pgtype.Timestamptz `db:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `db:"updated_at"`
+	Type          string             `db:"type"`
+	Name          pgtype.Text        `db:"name"`
+	Code          pgtype.Text        `db:"code"`
+	Currency      string             `db:"currency"`
+	NormalBalance string             `db:"normal_balance"`
+	UserID        pgtype.Int8        `db:"user_id"`
 }
 
 type Balance struct {
@@ -22,6 +27,19 @@ type Balance struct {
 	AccountID     int64              `db:"account_id"`
 	Balance       int64              `db:"balance"`
 	LockedBalance int64              `db:"locked_balance"`
+}
+
+type IdempotencyKey struct {
+	ID            int64              `db:"id"`
+	Key           string             `db:"key"`
+	UserID        pgtype.Int8        `db:"user_id"`
+	ResourcePath  string             `db:"resource_path"`
+	RequestParams []byte             `db:"request_params"`
+	ResponseCode  pgtype.Int4        `db:"response_code"`
+	ResponseBody  []byte             `db:"response_body"`
+	RecoveryPoint pgtype.Text        `db:"recovery_point"`
+	Message       pgtype.Text        `db:"message"`
+	CreatedAt     pgtype.Timestamptz `db:"created_at"`
 }
 
 type LedgerEntry struct {
@@ -41,6 +59,8 @@ type Transaction struct {
 	CreatedAt pgtype.Timestamptz `db:"created_at"`
 	UpdatedAt pgtype.Timestamptz `db:"updated_at"`
 	Reference pgtype.Text        `db:"reference"`
+	Status    string             `db:"status"`
+	Type      string             `db:"type"`
 }
 
 type WaitlistEntry struct {

@@ -122,33 +122,447 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/v1/accounts/{id}/balance": {
+            "get": {
+                "description": "Get computed account balance from ledger entries",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "accounts"
+                ],
+                "summary": "Get computed account balance",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Account ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain_account.BalanceResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/transactions": {
+            "get": {
+                "description": "Get transaction history for an account",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "transactions"
+                ],
+                "summary": "Get transaction history",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Account ID",
+                        "name": "account_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/domain_transaction.LedgerEntryResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/transactions/deposit": {
+            "post": {
+                "description": "Deposit funds into an account",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "transactions"
+                ],
+                "summary": "Deposit funds",
+                "parameters": [
+                    {
+                        "description": "Deposit payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain_transaction.DepositRequest"
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "description": "Idempotency key",
+                        "name": "idempotency-key",
+                        "in": "header"
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/domain_transaction.TransactionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/transactions/transfer": {
+            "post": {
+                "description": "Transfer funds between two accounts",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "transactions"
+                ],
+                "summary": "Transfer funds",
+                "parameters": [
+                    {
+                        "description": "Transfer payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain_transaction.TransferRequest"
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "description": "Idempotency key",
+                        "name": "idempotency-key",
+                        "in": "header"
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/domain_transaction.TransactionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/transactions/withdraw": {
+            "post": {
+                "description": "Withdraw funds from an account",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "transactions"
+                ],
+                "summary": "Withdraw funds",
+                "parameters": [
+                    {
+                        "description": "Withdraw payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain_transaction.WithdrawRequest"
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "description": "Idempotency key",
+                        "name": "idempotency-key",
+                        "in": "header"
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/domain_transaction.TransactionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
         "domain_account.AccountResponse": {
             "type": "object",
             "properties": {
+                "balance": {
+                    "description": "Cached balance",
+                    "type": "number"
+                },
+                "code": {
+                    "type": "string"
+                },
                 "created_at": {
+                    "type": "string"
+                },
+                "currency": {
                     "type": "string"
                 },
                 "id": {
                     "type": "integer"
                 },
-                "type": {
+                "name": {
                     "type": "string"
                 },
                 "updated_at": {
                     "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain_account.BalanceResponse": {
+            "type": "object",
+            "properties": {
+                "balance": {
+                    "type": "number"
                 }
             }
         },
         "domain_account.CreateAccountRequest": {
             "type": "object",
             "required": [
-                "type"
+                "code",
+                "currency",
+                "name",
+                "user_id"
             ],
             "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "currency": {
+                    "description": "validate currency",
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain_transaction.DepositRequest": {
+            "type": "object",
+            "required": [
+                "account_id",
+                "amount",
+                "reference"
+            ],
+            "properties": {
+                "account_id": {
+                    "type": "integer"
+                },
+                "amount": {
+                    "type": "number"
+                },
+                "reference": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain_transaction.LedgerEntryResponse": {
+            "type": "object",
+            "properties": {
+                "account_id": {
+                    "type": "integer"
+                },
+                "amount": {
+                    "type": "number"
+                },
+                "balance_after": {
+                    "type": "number"
+                },
+                "direction": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "reference": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "transaction_id": {
+                    "type": "integer"
+                },
                 "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain_transaction.TransactionResponse": {
+            "type": "object",
+            "properties": {
+                "entries": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain_transaction.LedgerEntryResponse"
+                    }
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "reference": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain_transaction.TransferRequest": {
+            "type": "object",
+            "required": [
+                "amount",
+                "receiver_id",
+                "reference",
+                "sender_id"
+            ],
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "receiver_id": {
+                    "type": "integer"
+                },
+                "reference": {
+                    "type": "string"
+                },
+                "sender_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain_transaction.WithdrawRequest": {
+            "type": "object",
+            "required": [
+                "account_id",
+                "amount",
+                "reference"
+            ],
+            "properties": {
+                "account_id": {
+                    "type": "integer"
+                },
+                "amount": {
+                    "type": "number"
+                },
+                "reference": {
                     "type": "string"
                 }
             }

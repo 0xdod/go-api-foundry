@@ -24,22 +24,24 @@ func NewController(db *postgres.DB, logger *log.Logger) *router.RESTController {
 			// Register handlers
 			rs.AddPostHandler(c, accountRateLimiter, "", createAccountHandler(service))
 			rs.AddGetHandler(c, accountRateLimiter, "/:id", getAccountByIDHandler(service))
+			rs.AddGetHandler(c, accountRateLimiter, "/:id/balance", getComputedBalanceHandler(service))
 		},
 	)
 }
 
 // CreateAccount godoc
-// @Summary      Create an account
-// @Description  create an account
-// @Tags         accounts
-// @Accept       json
-// @Produce      json
-// @Param        body   body      CreateAccountRequest  true  "Account payload"
-// @Success      200  {object}  AccountResponse
-// @Failure      400  {object}  map[string]any
-// @Failure      404  {object}  map[string]any
-// @Failure      500  {object}  map[string]any
-// @Router       /v1/accounts [post]
+//
+//	@Summary		Create an account
+//	@Description	create an account
+//	@Tags			accounts
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		CreateAccountRequest	true	"Account payload"
+//	@Success		200		{object}	AccountResponse
+//	@Failure		400		{object}	map[string]any
+//	@Failure		404		{object}	map[string]any
+//	@Failure		500		{object}	map[string]any
+//	@Router			/v1/accounts [post]
 func createAccountHandler(service *Service) router.HandlerFunction {
 	return func(ctx *router.RequestContext) *router.ServiceResult {
 		logger := router.GetLogger(ctx)
@@ -70,17 +72,18 @@ func createAccountHandler(service *Service) router.HandlerFunction {
 }
 
 // GetAccountByID godoc
-// @Summary      Get an account
-// @Description  get an account by ID
-// @Tags         accounts
-// @Accept       json
-// @Produce      json
-// @Param        id   path      int  true  "Account ID"
-// @Success      200  {object}  AccountResponse
-// @Failure      400  {object}  map[string]any
-// @Failure      404  {object}  map[string]any
-// @Failure      500  {object}  map[string]any
-// @Router       /v1/accounts/{id} [get]
+//
+//	@Summary		Get an account
+//	@Description	get an account by ID
+//	@Tags			accounts
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		int	true	"Account ID"
+//	@Success		200	{object}	AccountResponse
+//	@Failure		400	{object}	map[string]any
+//	@Failure		404	{object}	map[string]any
+//	@Failure		500	{object}	map[string]any
+//	@Router			/v1/accounts/{id} [get]
 func getAccountByIDHandler(service *Service) router.HandlerFunction {
 	return func(ctx *router.RequestContext) *router.ServiceResult {
 		id, errResult := router.ParseIDParam(ctx, "id")
@@ -98,6 +101,39 @@ func getAccountByIDHandler(service *Service) router.HandlerFunction {
 		}
 
 		return router.OKResult(response, "Account entry retrieved successfully")
+	}
+}
+
+// GetComputedBalance godoc
+//
+//	@Summary		Get computed account balance
+//	@Description	Get computed account balance from ledger entries
+//	@Tags			accounts
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		int	true	"Account ID"
+//	@Success		200	{object}	BalanceResponse
+//	@Failure		400	{object}	map[string]any
+//	@Failure		404	{object}	map[string]any
+//	@Failure		500	{object}	map[string]any
+//	@Router			/v1/accounts/{id}/balance [get]
+func getComputedBalanceHandler(service *Service) router.HandlerFunction {
+	return func(ctx *router.RequestContext) *router.ServiceResult {
+		id, errResult := router.ParseIDParam(ctx, "id")
+		if errResult != nil {
+			return errResult
+		}
+
+		balance, err := service.GetComputedBalance(ctx.Request.Context(), id)
+		if err != nil {
+			return router.ErrorResult(
+				apperrors.HTTPStatusCode(err),
+				apperrors.GetHumanReadableMessage(err),
+				nil,
+			)
+		}
+
+		return router.OKResult(balance, "Account balance computed successfully")
 	}
 }
 

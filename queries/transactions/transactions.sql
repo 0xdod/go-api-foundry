@@ -1,5 +1,6 @@
 -- name: CreateTransaction :one
-INSERT INTO transactions (reference) VALUES ($1) RETURNING *;
+INSERT INTO transactions (reference, status, type) 
+VALUES ($1, $2, $3) RETURNING *;
 
 -- name: FindTransactionByID :one
 SELECT * FROM transactions WHERE id = $1;

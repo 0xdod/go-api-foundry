@@ -1,0 +1,5 @@
+ALTER TABLE accounts
+DROP COLUMN name,
+DROP COLUMN code,
+DROP COLUMN currency,
+DROP COLUMN user_id;

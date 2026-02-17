@@ -12,23 +12,32 @@ import (
 )
 
 const createTransaction = `-- name: CreateTransaction :one
-INSERT INTO transactions (reference) VALUES ($1) RETURNING id, created_at, updated_at, reference
+INSERT INTO transactions (reference, status, type) 
+VALUES ($1, $2, $3) RETURNING id, created_at, updated_at, reference, status, type
 `
 
-func (q *Queries) CreateTransaction(ctx context.Context, reference pgtype.Text) (Transaction, error) {
-	row := q.db.QueryRow(ctx, createTransaction, reference)
+type CreateTransactionParams struct {
+	Reference pgtype.Text `db:"reference"`
+	Status    string      `db:"status"`
+	Type      string      `db:"type"`
+}
+
+func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionParams) (Transaction, error) {
+	row := q.db.QueryRow(ctx, createTransaction, arg.Reference, arg.Status, arg.Type)
 	var i Transaction
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Reference,
+		&i.Status,
+		&i.Type,
 	)
 	return i, err
 }
 
 const deleteTransaction = `-- name: DeleteTransaction :one
-DELETE FROM transactions WHERE id = $1 RETURNING id, created_at, updated_at, reference
+DELETE FROM transactions WHERE id = $1 RETURNING id, created_at, updated_at, reference, status, type
 `
 
 func (q *Queries) DeleteTransaction(ctx context.Context, id int64) (Transaction, error) {
@@ -39,12 +48,14 @@ func (q *Queries) DeleteTransaction(ctx context.Context, id int64) (Transaction,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Reference,
+		&i.Status,
+		&i.Type,
 	)
 	return i, err
 }
 
 const findTransactionByID = `-- name: FindTransactionByID :one
-SELECT id, created_at, updated_at, reference FROM transactions WHERE id = $1
+SELECT id, created_at, updated_at, reference, status, type FROM transactions WHERE id = $1
 `
 
 func (q *Queries) FindTransactionByID(ctx context.Context, id int64) (Transaction, error) {
@@ -55,12 +66,14 @@ func (q *Queries) FindTransactionByID(ctx context.Context, id int64) (Transactio
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Reference,
+		&i.Status,
+		&i.Type,
 	)
 	return i, err
 }
 
 const findTransactionByReference = `-- name: FindTransactionByReference :one
-SELECT id, created_at, updated_at, reference FROM transactions WHERE reference = $1
+SELECT id, created_at, updated_at, reference, status, type FROM transactions WHERE reference = $1
 `
 
 func (q *Queries) FindTransactionByReference(ctx context.Context, reference pgtype.Text) (Transaction, error) {
@@ -71,12 +84,14 @@ func (q *Queries) FindTransactionByReference(ctx context.Context, reference pgty
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Reference,
+		&i.Status,
+		&i.Type,
 	)
 	return i, err
 }
 
 const listTransactions = `-- name: ListTransactions :many
-SELECT id, created_at, updated_at, reference FROM transactions
+SELECT id, created_at, updated_at, reference, status, type FROM transactions
 `
 
 func (q *Queries) ListTransactions(ctx context.Context) ([]Transaction, error) {
@@ -93,6 +108,8 @@ func (q *Queries) ListTransactions(ctx context.Context) ([]Transaction, error) {
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Reference,
+			&i.Status,
+			&i.Type,
 		); err != nil {
 			return nil, err
 		}
@@ -105,7 +122,7 @@ func (q *Queries) ListTransactions(ctx context.Context) ([]Transaction, error) {
 }
 
 const updateTransaction = `-- name: UpdateTransaction :one
-UPDATE transactions SET reference = $2 WHERE id = $1 RETURNING id, created_at, updated_at, reference
+UPDATE transactions SET reference = $2 WHERE id = $1 RETURNING id, created_at, updated_at, reference, status, type
 `
 
 type UpdateTransactionParams struct {
@@ -121,6 +138,8 @@ func (q *Queries) UpdateTransaction(ctx context.Context, arg UpdateTransactionPa
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Reference,
+		&i.Status,
+		&i.Type,
 	)
 	return i, err
 }

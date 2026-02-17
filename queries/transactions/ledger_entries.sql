@@ -9,10 +9,13 @@ SELECT * FROM ledger_entries WHERE id = $1;
 SELECT * FROM ledger_entries WHERE transaction_id = $1;
 
 -- name: FindLedgerEntriesByAccountID :many
-SELECT * FROM ledger_entries WHERE account_id = $1;
+SELECT le.*, t.reference, t.type, t.status FROM ledger_entries le
+JOIN transactions t ON le.transaction_id = t.id
+WHERE account_id = $1
+ORDER BY t.created_at DESC;
 
 -- name: ListLedgerEntries :many
-SELECT * FROM ledger_entries;
+SELECT * FROM ledger_entries ORDER BY created_at DESC;
 
 -- name: DeleteLedgerEntry :one
 DELETE FROM ledger_entries WHERE id = $1 RETURNING *;

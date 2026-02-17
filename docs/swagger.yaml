@@ -1,21 +1,123 @@
 definitions:
   domain_account.AccountResponse:
     properties:
+      balance:
+        description: Cached balance
+        type: number
+      code:
+        type: string
       created_at:
+        type: string
+      currency:
         type: string
       id:
         type: integer
-      type:
+      name:
         type: string
       updated_at:
         type: string
+      user_id:
+        type: integer
+    type: object
+  domain_account.BalanceResponse:
+    properties:
+      balance:
+        type: number
     type: object
   domain_account.CreateAccountRequest:
     properties:
-      type:
+      code:
+        type: string
+      currency:
+        description: validate currency
+        type: string
+      name:
+        type: string
+      user_id:
+        type: integer
+    required:
+    - code
+    - currency
+    - name
+    - user_id
+    type: object
+  domain_transaction.DepositRequest:
+    properties:
+      account_id:
+        type: integer
+      amount:
+        type: number
+      reference:
         type: string
     required:
-    - type
+    - account_id
+    - amount
+    - reference
+    type: object
+  domain_transaction.LedgerEntryResponse:
+    properties:
+      account_id:
+        type: integer
+      amount:
+        type: number
+      balance_after:
+        type: number
+      direction:
+        type: string
+      id:
+        type: integer
+      reference:
+        type: string
+      status:
+        type: string
+      transaction_id:
+        type: integer
+      type:
+        type: string
+    type: object
+  domain_transaction.TransactionResponse:
+    properties:
+      entries:
+        items:
+          $ref: '#/definitions/domain_transaction.LedgerEntryResponse'
+        type: array
+      id:
+        type: integer
+      reference:
+        type: string
+      status:
+        type: string
+      type:
+        type: string
+    type: object
+  domain_transaction.TransferRequest:
+    properties:
+      amount:
+        type: number
+      receiver_id:
+        type: integer
+      reference:
+        type: string
+      sender_id:
+        type: integer
+    required:
+    - amount
+    - receiver_id
+    - reference
+    - sender_id
+    type: object
+  domain_transaction.WithdrawRequest:
+    properties:
+      account_id:
+        type: integer
+      amount:
+        type: number
+      reference:
+        type: string
+    required:
+    - account_id
+    - amount
+    - reference
     type: object
 info:
   contact: {}
@@ -96,6 +198,183 @@ paths:
       summary: Get an account
       tags:
       - accounts
+  /v1/accounts/{id}/balance:
+    get:
+      consumes:
+      - application/json
+      description: Get computed account balance from ledger entries
+      parameters:
+      - description: Account ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain_account.BalanceResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get computed account balance
+      tags:
+      - accounts
+  /v1/transactions:
+    get:
+      consumes:
+      - application/json
+      description: Get transaction history for an account
+      parameters:
+      - description: Account ID
+        in: query
+        name: account_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain_transaction.LedgerEntryResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get transaction history
+      tags:
+      - transactions
+  /v1/transactions/deposit:
+    post:
+      consumes:
+      - application/json
+      description: Deposit funds into an account
+      parameters:
+      - description: Deposit payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/domain_transaction.DepositRequest'
+      - description: Idempotency key
+        in: header
+        name: idempotency-key
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain_transaction.TransactionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Deposit funds
+      tags:
+      - transactions
+  /v1/transactions/transfer:
+    post:
+      consumes:
+      - application/json
+      description: Transfer funds between two accounts
+      parameters:
+      - description: Transfer payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/domain_transaction.TransferRequest'
+      - description: Idempotency key
+        in: header
+        name: idempotency-key
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain_transaction.TransactionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Transfer funds
+      tags:
+      - transactions
+  /v1/transactions/withdraw:
+    post:
+      consumes:
+      - application/json
+      description: Withdraw funds from an account
+      parameters:
+      - description: Withdraw payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/domain_transaction.WithdrawRequest'
+      - description: Idempotency key
+        in: header
+        name: idempotency-key
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain_transaction.TransactionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Withdraw funds
+      tags:
+      - transactions
 securityDefinitions:
   BearerAuth:
     in: header

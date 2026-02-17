@@ -8,7 +8,10 @@ import (
 
 // CreateAccountRequest defines the structure for creating a new account entry
 type CreateAccountRequest struct {
-	Type string `json:"type" binding:"required"`
+	Name     string `json:"name" binding:"required"`
+	Code     string `json:"code" binding:"required"`
+	Currency string `json:"currency" binding:"required"` // validate currency
+	UserID   uint64 `json:"user_id" binding:"required"`
 }
 
 // AccountResponse defines the structure for account responses
@@ -16,7 +19,11 @@ type AccountResponse struct {
 	ID        uint      `json:"id"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
-	Type      string    `json:"type"`
+	Name      string    `json:"name"`
+	Code      string    `json:"code"`
+	Currency  string    `json:"currency"`
+	UserID    uint64    `json:"user_id"`
+	Balance   float64   `json:"balance"` // Cached balance
 }
 
 // ========================================
@@ -29,7 +36,10 @@ func ToAccountModel(req *CreateAccountRequest) *models.Account {
 		return nil
 	}
 	return &models.Account{
-		Type: req.Type,
+		Name:     req.Name,
+		Code:     req.Code,
+		Currency: req.Currency,
+		UserID:   req.UserID,
 	}
 }
 
@@ -38,10 +48,21 @@ func ToAccountResponse(model *models.Account) AccountResponse {
 	if model == nil {
 		return AccountResponse{}
 	}
+
+	balanceInUnit := float64(model.Balance) / 100.00
+
 	return AccountResponse{
 		ID:        uint(model.ID),
 		CreatedAt: model.CreatedAt,
 		UpdatedAt: model.UpdatedAt,
-		Type:      model.Type,
+		Name:      model.Name,
+		Code:      model.Code,
+		Currency:  model.Currency,
+		UserID:    model.UserID,
+		Balance:   balanceInUnit,
 	}
+}
+
+type BalanceResponse struct {
+	Balance float64 `json:"balance"`
 }
