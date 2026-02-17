@@ -46,7 +46,6 @@ func (suite *TransactionAPITestSuite) SetupSuite() {
 	ctx := context.Background()
 	var err error
 
-	// 1. Start Postgres Container
 	dbName := "testdb"
 	dbUser := "testuser"
 	dbPassword := "testpassword"
@@ -66,11 +65,9 @@ func (suite *TransactionAPITestSuite) SetupSuite() {
 	connStr, err := suite.pgContainer.ConnectionString(ctx, "sslmode=disable")
 	suite.Require().NoError(err)
 
-	// 2. Run Migrations
 	wd, err := os.Getwd()
 	suite.Require().NoError(err)
 
-	// Try multiple paths for migrations
 	migrationsPath := filepath.Join(wd, "..", "migrations")
 	if _, err := os.Stat(migrationsPath); os.IsNotExist(err) {
 		migrationsPath = filepath.Join(wd, "migrations")
@@ -86,15 +83,12 @@ func (suite *TransactionAPITestSuite) SetupSuite() {
 	err = m.Up()
 	suite.Require().NoError(err)
 
-	// 3. Connect to DB
 	suite.logger = log.NewLoggerWithJSONOutput()
 	suite.db = pgClient.NewDB(connStr, suite.logger)
 	err = suite.db.Connect(ctx)
 	suite.Require().NoError(err)
-
-	// 4. Setup Router and Server
 	suite.appConfig = &config.ApplicationConfig{
-		PGDB:   suite.db,
+		DB:     suite.db,
 		Logger: suite.logger,
 	}
 
@@ -104,36 +98,13 @@ func (suite *TransactionAPITestSuite) SetupSuite() {
 		RequestTimeout:    30 * time.Second,
 	})
 
-	// Mount Controllers
-	// 1. Account Controller (to create user accounts)
-	accountFactory := account.NewServiceFactory(suite.appConfig.PGDB, suite.appConfig.Logger)
+	accountFactory := account.NewServiceFactory(suite.appConfig.DB, suite.appConfig.Logger)
 	suite.appConfig.RouterService.MountController(accountFactory.CreateController())
-
-	// 2. Transaction Controller
-	// We need to construct this manually or use a factory if one exists.
-	// Step 174 showed transaction/factory.go created. Let's use it if possible.
-	// Assuming NewServiceFactory exists in transaction package.
-	transactionFactory := transaction.NewServiceFactory(suite.appConfig.PGDB, suite.appConfig.Logger)
+	transactionFactory := transaction.NewServiceFactory(suite.appConfig.DB, suite.appConfig.Logger)
 	suite.appConfig.RouterService.MountController(transactionFactory.CreateController())
 
 	suite.server = httptest.NewServer(suite.appConfig.RouterService.GetEngine())
 	suite.baseURL = suite.server.URL
-
-	// Seed User
-	// We need to seed a user in the users table because accounts referencing user_id need it
-	// Assuming users table schema: id, email, ...
-	// Since I don't have the User model/sqlc easily accessible here, I'll direct SQL exec.
-	// The migration for accounts adds user_id FK, but maybe it's nullable or we need to respect it.
-	// Wait, migration 000003 adds user_id. Is it FK? "ADD COLUMN user_id BIGINT NULL". No FK constraint explicit in the `ADD COLUMN` line shown in Step 92.
-	// But let's check if there is a users table.
-	// Step 88 shows waitlist_entries.
-	// Step 89 shows accounts, transactions, ledger_entries, balances.
-	// User table might be missing from the provided context or migrations listing?
-	// Ah, I see "000001_init.up.sql" has waitlist_entries.
-	// Maybe "users" table is not shown or I missed it.
-	// If `user_id` in accounts does not have references constraint, I can insert any ID.
-	// Step 92: `ADD COLUMN user_id BIGINT NULL;` - no REFERENCES clause.
-	// So I can use any integer.
 }
 
 func (suite *TransactionAPITestSuite) TearDownSuite() {
@@ -149,7 +120,6 @@ func (suite *TransactionAPITestSuite) TearDownSuite() {
 }
 
 func (suite *TransactionAPITestSuite) TestDeposit() {
-	// 1. Create User Account
 	reqAccount := map[string]interface{}{
 		"type":     "user",
 		"name":     "Deposit Test Account",
@@ -168,10 +138,9 @@ func (suite *TransactionAPITestSuite) TestDeposit() {
 	accData := accResp["data"].(map[string]interface{})
 	accountID := uint64(accData["id"].(float64))
 
-	// 2. Deposit
 	reqDeposit := map[string]interface{}{
 		"account_id": accountID,
-		"amount":     50.00, // $50.00
+		"amount":     50.00,
 		"reference":  "dep-" + uuid.New().String(),
 	}
 	jsonDeposit, _ := json.Marshal(reqDeposit)
@@ -179,7 +148,6 @@ func (suite *TransactionAPITestSuite) TestDeposit() {
 	httpReq, _ := http.NewRequest(http.MethodPost, suite.baseURL+"/v1/transactions/deposit", bytes.NewBuffer(jsonDeposit))
 	httpReq.Header.Set("Idempotency-Key", "idem-dep-1")
 	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("User-ID", "100") // Middleware requires User-ID? Usually Idempotency needs user_id context.
 
 	client := &http.Client{}
 	resp, err = client.Do(httpReq)
@@ -195,8 +163,6 @@ func (suite *TransactionAPITestSuite) TestDeposit() {
 	txnData := txnResp["data"].(map[string]interface{})
 	suite.Equal("deposit", txnData["type"])
 
-	// 3. Verify Balance
-	// Get Account Balance
 	resp, err = http.Get(fmt.Sprintf("%s/v1/accounts/%d/balance", suite.baseURL, accountID))
 	suite.Require().NoError(err)
 	defer resp.Body.Close()
@@ -205,12 +171,10 @@ func (suite *TransactionAPITestSuite) TestDeposit() {
 	json.NewDecoder(resp.Body).Decode(&balResp)
 
 	balData := balResp["data"].(map[string]interface{})
-	// 50.00 * 100 = 5000 cents
-	suite.Equal(float64(5000), balData["balance"])
+	suite.Equal(float64(50), balData["balance"])
 }
 
 func (suite *TransactionAPITestSuite) TestWithdraw() {
-	// 1. Create User Account
 	reqAccount := map[string]interface{}{
 		"type":     "user",
 		"name":     "Withdraw Test Account",
@@ -228,7 +192,6 @@ func (suite *TransactionAPITestSuite) TestWithdraw() {
 	accData := accResp["data"].(map[string]interface{})
 	accountID := uint64(accData["id"].(float64))
 
-	// 2. Deposit Funds First (so we can withdraw)
 	reqDeposit := map[string]interface{}{
 		"account_id": accountID,
 		"amount":     100.00,
@@ -243,7 +206,6 @@ func (suite *TransactionAPITestSuite) TestWithdraw() {
 	resp, _ = client.Do(httpReqDep)
 	resp.Body.Close()
 
-	// 3. Withdraw
 	reqWithdraw := map[string]interface{}{
 		"account_id": accountID,
 		"amount":     50.00,
@@ -262,7 +224,6 @@ func (suite *TransactionAPITestSuite) TestWithdraw() {
 
 	suite.Equal(http.StatusCreated, resp.StatusCode)
 
-	// 4. Verify Balance (100 - 50 = 50 => 5000 cents)
 	resp, err = http.Get(fmt.Sprintf("%s/v1/accounts/%d/balance", suite.baseURL, accountID))
 	suite.Require().NoError(err)
 	defer resp.Body.Close()
@@ -270,7 +231,58 @@ func (suite *TransactionAPITestSuite) TestWithdraw() {
 	var balResp map[string]interface{}
 	json.NewDecoder(resp.Body).Decode(&balResp)
 	balData := balResp["data"].(map[string]interface{})
-	suite.Equal(float64(5000), balData["balance"])
+	suite.Equal(float64(50), balData["balance"])
+}
+
+func (suite *TransactionAPITestSuite) TestGetHistory() {
+	reqAccount := map[string]interface{}{
+		"type":     "user",
+		"name":     "History Test Account",
+		"code":     "HIST-001",
+		"currency": "USD",
+		"user_id":  102,
+	}
+	jsonBody, _ := json.Marshal(reqAccount)
+	resp, _ := http.Post(suite.baseURL+"/v1/accounts", "application/json", bytes.NewBuffer(jsonBody))
+
+	var accResp map[string]interface{}
+	json.NewDecoder(resp.Body).Decode(&accResp)
+	resp.Body.Close()
+	accData := accResp["data"].(map[string]interface{})
+	accountID := uint64(accData["id"].(float64))
+
+	reqDeposit := map[string]interface{}{
+		"account_id": accountID,
+		"amount":     200.00,
+		"reference":  "dep-hist-" + uuid.New().String(),
+	}
+	jsonDeposit, _ := json.Marshal(reqDeposit)
+	httpReqDep, _ := http.NewRequest(http.MethodPost, suite.baseURL+"/v1/transactions/deposit", bytes.NewBuffer(jsonDeposit))
+	client := &http.Client{}
+	client.Do(httpReqDep)
+
+	reqWithdraw := map[string]interface{}{
+		"account_id": accountID,
+		"amount":     50.00,
+		"reference":  "wd-hist-" + uuid.New().String(),
+	}
+	jsonWithdraw, _ := json.Marshal(reqWithdraw)
+	httpReqWd, _ := http.NewRequest(http.MethodPost, suite.baseURL+"/v1/transactions/withdraw", bytes.NewBuffer(jsonWithdraw))
+	client.Do(httpReqWd)
+
+	resp, err := http.Get(fmt.Sprintf("%s/v1/transactions?account_id=%d", suite.baseURL, accountID))
+	suite.Require().NoError(err)
+	defer resp.Body.Close()
+
+	suite.Equal(http.StatusOK, resp.StatusCode)
+
+	var histResp map[string]interface{}
+	err = json.NewDecoder(resp.Body).Decode(&histResp)
+	suite.Require().NoError(err)
+
+	entries := histResp["data"].([]interface{})
+
+	suite.Len(entries, 2)
 }
 
 func TestTransactionAPISuite(t *testing.T) {

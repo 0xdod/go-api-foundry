@@ -5,7 +5,7 @@ This is a Go backend API starter template: Gin + PostgreSQL (GORM) + optional Re
 - Developer docs: [docs/developer-guide.md](docs/developer-guide.md)
 - Design notes: [docs/DESIGN_PATTERNS.md](docs/DESIGN_PATTERNS.md)
 - Production checklist: [docs/production-checklist.md](docs/production-checklist.md)
-- Reference implementation (for onboarding): [domain/waitlist/](domain/waitlist/) (`/v1/waitlist`)
+- Reference implementation (ledger): [docs/ledger.md](docs/ledger.md)
 
 ## License
 
@@ -127,16 +127,16 @@ Jaeger UI: http://localhost:16686
 
 ### Verify traces end-to-end
 
-1) Start Jaeger (see above).
-2) Start the API (e.g. `make dev` or `make run`).
-3) Generate traffic:
+1. Start Jaeger (see above).
+2. Start the API (e.g. `make dev` or `make run`).
+3. Generate traffic:
 
 ```bash
 curl -sS http://localhost:${APP_PORT:-8080}/health >/dev/null
 curl -sS http://localhost:${APP_PORT:-8080}/v1/waitlist >/dev/null || true
 ```
 
-4) Open Jaeger UI, select service `go-api-foundry`, and search for recent traces.
+4. Open Jaeger UI, select service `go-api-foundry`, and search for recent traces.
 
 ## Configuration (high-signal)
 
@@ -164,7 +164,8 @@ HSTS:
 ## Acknowledgements
 
 AI was utilized as a critical friend, seeking feedback on performance metrics and critical reviews of my implementation to identify potential bottlenecks. The use of these models in no way completely replaces the author's imagination and creativity in crafting this solution; rather, they enhanced the author's ability to proactively spot issues and co-create responsibly. Below are the generative AI models consulted during the development of this solution and the prompt used:
-- GPT-5.2 
+
+- GPT-5.2
 - Claude Opus 4.5
 
 ## AI Prompt Used
@@ -194,5 +195,3 @@ Also identify:
 - Concrete improvements and best-practice recommendations
 - Provide a clear, structured, and brutally honest assessment with actionable suggestions
 ```
-
-

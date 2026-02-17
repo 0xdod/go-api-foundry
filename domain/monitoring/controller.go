@@ -6,8 +6,8 @@ import (
 
 	"github.com/akeren/go-api-foundry/config/router"
 	"github.com/akeren/go-api-foundry/internal/log"
+	"github.com/akeren/go-api-foundry/internal/postgres"
 	"github.com/akeren/go-api-foundry/pkg/ratelimit"
-	"gorm.io/gorm"
 )
 
 type Cache interface {
@@ -23,13 +23,13 @@ type HealthStatus struct {
 }
 
 type MonitoringController struct {
-	db        *gorm.DB
+	db        *postgres.DB
 	logger    *log.Logger
 	cache     Cache
 	startTime time.Time
 }
 
-func NewMonitoringController(db *gorm.DB, logger *log.Logger, cache Cache) *router.RESTController {
+func NewMonitoringController(db *postgres.DB, logger *log.Logger, cache Cache) *router.RESTController {
 	ctrl := &MonitoringController{
 		db:        db,
 		logger:    logger,
@@ -151,13 +151,7 @@ func checkDatabaseConnectivity(ctx context.Context, ctrl *MonitoringController, 
 }
 
 func (ctrl *MonitoringController) checkDatabase(ctx context.Context) bool {
-	sqlDB, err := ctrl.db.DB()
-	if err != nil {
-		return false
-	}
-
-	// Ping the database
-	return sqlDB.PingContext(ctx) == nil
+	return ctrl.db.Ping(ctx) == nil
 }
 
 func (ctrl *MonitoringController) checkCache(ctx context.Context) bool {

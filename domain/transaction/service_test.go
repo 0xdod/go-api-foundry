@@ -21,7 +21,7 @@ func TestTransactionService_Deposit(t *testing.T) {
 	t.Run("successful deposit", func(t *testing.T) {
 		req := &DepositRequest{
 			AccountID: 1,
-			Amount:    100.00, // $100.00
+			Amount:    100.00,
 			Reference: "dep-123",
 		}
 
@@ -32,15 +32,12 @@ func TestTransactionService_Deposit(t *testing.T) {
 		sysBal := &models.AccountBalance{AccountID: 999, Balance: 10000}
 		userBal := &models.AccountBalance{AccountID: 1, Balance: 10000}
 
-		// Expect WithTx to be called
 		mockRepo.EXPECT().WithTx(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, fn func(Repository) error) error {
 			return fn(mockRepo)
 		})
 
-		// Inside WithTx
 		mockRepo.EXPECT().CreateTransaction(gomock.Any(), gomock.Any()).Return(txn, nil)
 		mockRepo.EXPECT().FindAccountByType(gomock.Any(), "treasury").Return(treasuryAccount, nil)
-		// 100.00 * 100 = 10000 cents
 		mockRepo.EXPECT().UpdateBalance(gomock.Any(), treasuryAccount.ID, int64(10000)).Return(sysBal, nil)
 		mockRepo.EXPECT().CreateLedgerEntry(gomock.Any(), gomock.Any()).Return(&models.LedgerEntry{ID: 1, Amount: 10000}, nil) // Debit Treasury
 
@@ -84,38 +81,30 @@ func TestTransactionService_Withdraw(t *testing.T) {
 
 		userAccount := &models.Account{ID: 1, Type: "user", Balance: 10000} // Sufficient balance
 
-		// 1. Initial Check (Outside Tx)
 		mockRepo.EXPECT().FindAccountByID(gomock.Any(), req.AccountID).Return(userAccount, nil)
 
-		// 2. WithTx
 		mockRepo.EXPECT().WithTx(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, fn func(Repository) error) error {
 			return fn(mockRepo)
 		})
 
-		// Inside Tx
 		txn := &models.Transaction{ID: 2, Reference: "wd-123", Type: "withdraw", Status: "completed"}
 		mockRepo.EXPECT().CreateTransaction(gomock.Any(), gomock.Any()).Return(txn, nil)
 
-		// Update User Balance (-5000)
 		userBalAfter := &models.AccountBalance{AccountID: 1, Balance: 5000}
 		mockRepo.EXPECT().UpdateBalance(gomock.Any(), userAccount.ID, -amountInt).Return(userBalAfter, nil)
 
-		// Create Debit Entry (User)
 		mockRepo.EXPECT().CreateLedgerEntry(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, entry *models.LedgerEntry) (*models.LedgerEntry, error) {
 			assert.Equal(t, "debit", entry.Direction)
 			assert.Equal(t, userAccount.ID, getUint64(entry.AccountID))
 			return &models.LedgerEntry{ID: 3, Direction: "debit", Amount: amountInt}, nil
 		})
 
-		// Find Treasury
 		treasuryAccount := &models.Account{ID: 999, Type: "treasury"}
 		mockRepo.EXPECT().FindAccountByType(gomock.Any(), "treasury").Return(treasuryAccount, nil)
 
-		// Update Treasury Balance (-5000)
 		treasuryBalAfter := &models.AccountBalance{AccountID: 999, Balance: 5000}
 		mockRepo.EXPECT().UpdateBalance(gomock.Any(), treasuryAccount.ID, -amountInt).Return(treasuryBalAfter, nil)
 
-		// Create Credit Entry (Treasury)
 		mockRepo.EXPECT().CreateLedgerEntry(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, entry *models.LedgerEntry) (*models.LedgerEntry, error) {
 			assert.Equal(t, "credit", entry.Direction)
 			assert.Equal(t, treasuryAccount.ID, getUint64(entry.AccountID))

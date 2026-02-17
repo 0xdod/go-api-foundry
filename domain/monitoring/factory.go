@@ -5,7 +5,7 @@ import (
 
 	"github.com/akeren/go-api-foundry/config/router"
 	"github.com/akeren/go-api-foundry/internal/log"
-	"gorm.io/gorm"
+	"github.com/akeren/go-api-foundry/internal/postgres"
 )
 
 // MonitoringCache defines the cache interface for the monitoring controller factory.
@@ -18,12 +18,12 @@ type MonitoringControllerFactory interface {
 }
 
 type DefaultMonitoringControllerFactory struct {
-	db     *gorm.DB
+	db     *postgres.DB
 	logger *log.Logger
 	cache  MonitoringCache
 }
 
-func NewMonitoringControllerFactory(db *gorm.DB, logger *log.Logger, cache MonitoringCache) MonitoringControllerFactory {
+func NewMonitoringControllerFactory(db *postgres.DB, logger *log.Logger, cache MonitoringCache) MonitoringControllerFactory {
 	return &DefaultMonitoringControllerFactory{
 		db:     db,
 		logger: logger,

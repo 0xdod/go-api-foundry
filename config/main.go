@@ -9,15 +9,12 @@ import (
 
 	"github.com/akeren/go-api-foundry/config/router"
 	"github.com/akeren/go-api-foundry/internal/log"
-	"github.com/akeren/go-api-foundry/internal/models"
 	"github.com/akeren/go-api-foundry/internal/postgres"
 	"github.com/akeren/go-api-foundry/pkg/constants"
-	"gorm.io/gorm"
 )
 
 type ApplicationConfig struct {
-	DB              *gorm.DB
-	PGDB            *postgres.DB
+	DB              *postgres.DB
 	RouterService   *router.RouterService
 	Logger          *log.Logger
 	Cache           Cache
@@ -70,7 +67,8 @@ func (ac *ApplicationConfig) Cleanup() {
 	}
 
 	if ac.DB != nil {
-		CloseDatabase(ac.DB, ac.Logger)
+		ac.Logger.Info("Closing database connection")
+		ac.DB.Close()
 	}
 
 	if ac.RouterService != nil {
@@ -102,18 +100,6 @@ func LoadApplicationConfiguration(logger *log.Logger, autoMigrate bool) (*Applic
 		return nil, err
 	}
 
-	dbCfg := &DBConfig{}
-	db, err := NewDatabase(logger, dbCfg)
-	if err != nil {
-		return nil, err
-	}
-
-	if autoMigrate {
-		if err := AutoMigrate(logger, db, models.ModelRegistry...); err != nil {
-			return nil, err
-		}
-	}
-
 	appConfig := NewAppConfig()
 	cache := NewCacheConfig().NewCacheOrNil(logger)
 
@@ -131,8 +117,7 @@ func LoadApplicationConfiguration(logger *log.Logger, autoMigrate bool) (*Applic
 	logger.Info("Application configuration loaded successfully")
 
 	return &ApplicationConfig{
-		DB:              db,
-		PGDB:            pgdb,
+		DB:              pgdb,
 		RouterService:   routerService,
 		Logger:          logger,
 		Cache:           cache,

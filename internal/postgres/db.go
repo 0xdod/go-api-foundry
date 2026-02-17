@@ -54,6 +54,6 @@ func (c *DB) WithTx(ctx context.Context, fn func(ctx context.Context, q *sqlc.Qu
 	return tx.Commit(ctx)
 }
 
-func (c *DB) Pool() *pgxpool.Pool {
-	return c.pool
+func (c *DB) Ping(ctx context.Context) error {
+	return c.pool.Ping(ctx)
 }

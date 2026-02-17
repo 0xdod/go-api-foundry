@@ -79,6 +79,7 @@ mockgen-install:
 .PHONY: mocks
 mock: mockgen-install
 	mockgen -source=domain/account/repository.go -destination=domain/account/mock_repository.go -package=account
+	mockgen -source=domain/transaction/repository.go -destination=domain/transaction/mock_repository.go -package=transaction
 	@echo "Mocks generated successfully!"
 
 generate-domain:
@@ -95,6 +96,10 @@ vendor:
 
 test:
 	go test ./...
+
+.PHONY: integration-test
+integration-test:
+	RUN_INTEGRATION_TESTS=true go test -v -count=1 ./integration/...
 
 build:
 	go build -o bin/server ./cmd/server
