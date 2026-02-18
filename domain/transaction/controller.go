@@ -1,6 +1,7 @@
 package transaction
 
 import (
+	"math"
 	"strconv"
 	"time"
 
@@ -164,6 +165,10 @@ func getHistoryHandler(service *Service) router.HandlerFunction {
 
 		accountID, err := strconv.ParseUint(accountIDStr, 10, 64)
 		if err != nil {
+			return router.BadRequestResult("invalid account_id", nil)
+		}
+
+		if accountID > math.MaxInt64 {
 			return router.BadRequestResult("invalid account_id", nil)
 		}
 
